@@ -2,6 +2,8 @@
   (:nicknames #:github)
   (:use #:cl)
   (:import-from #:log4cl)
+  (:import-from #:dexador)
+  (:import-from #:jonathan)
   (:import-from #:alexandria
                 #:starts-with-subseq)
   (:import-from #:link-header
