@@ -100,8 +100,8 @@
                                    ;; its results
                                    ((and (listp decoded)
                                          (keywordp (car decoded))
-                                         (getf decoded :|items|)
-                                         (getf decoded :|total_count|))
+                                         (member :|items| decoded)
+                                         (member :|total_count| decoded))
                                     (append (getf decoded :|items|)
                                             items))
                                    ;; Usual list of items or a single item
