@@ -32,6 +32,12 @@
 (defvar *warned-about-token* nil)
 
 
+(defun int-header (headers name)
+  (let ((value (gethash name headers)))
+    (when value
+      (parse-integer value))))
+
+
 (defun sleep-and-retry-if-rate-limited (cond)
   "Respect GitHub's rate limits and stop after we hit the limit.
   
@@ -39,7 +45,7 @@
    https://developer.github.com/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
   "
   (let* ((headers (dex:response-headers cond))
-         (ratelimit-reset (gethash "x-ratelimit-reset" headers))
+         (ratelimit-reset (int-header headers "x-ratelimit-reset"))
          (now (local-time:timestamp-to-unix (local-time:now))))
     (when ratelimit-reset
       (let ((seconds-to-sleep (- ratelimit-reset now)))
@@ -57,8 +63,8 @@
 
 
 (defun check-for-token ()
-  (unless (and *warned-about-token*
-               (boundp '*token*))
+  (when (and (not *warned-about-token*)
+             (not (boundp '*token*)))
     (setf *warned-about-token* t)
     (log:warn "Please, set github:*token* variable to OAuth token. This way you'll have large rate limit.")))
 
@@ -72,6 +78,20 @@
                               *token*))))
    (list (cons "User-Agent" *user-agent*))
    user-headers))
+
+
+(defun track-rate-limit (headers)
+  (setf *github-ratelimit-remaining*
+        (int-header headers "x-ratelimit-remaining"))
+                
+  (if *debug*
+      (log:info "GitHub's ratelimit remaining is ~A~%"
+                *github-ratelimit-remaining*)
+        
+      (when (and *github-ratelimit-remaining*
+                 (< *github-ratelimit-remaining* 100))
+        (log:warn "GitHub's ratelimit remaining is ~A~%"
+                  *github-ratelimit-remaining*))))
 
 
 (defun get (path &key params items verbose limit headers (timeout *default-timeout*))
@@ -98,21 +118,9 @@
                                :verbose verbose
                                :connect-timeout timeout
                                :read-timeout timeout))
+
+                (track-rate-limit headers)
                 
-                (setf *github-ratelimit-remaining*
-                      (parse-integer
-                       (gethash "x-ratelimit-remaining" headers)))
-                
-                (if *debug*
-                    (log:info "GitHub's ratelimit remaining is ~A~%"
-                              *github-ratelimit-remaining*)
-        
-                    (when (and *github-ratelimit-remaining*
-                               (< *github-ratelimit-remaining* 100))
-                      (log:warn "GitHub's ratelimit remaining is ~A~%"
-                                *github-ratelimit-remaining*)))
-      
-      
                 ;; we ignore 404 error and just return nil as if
                 ;; no data were fetched
                 (when (not (= status-code 404))
@@ -167,16 +175,7 @@
                         :read-timeout timeout))
       (when (>= status-code 400)
         (log:error "Github reponded with" status-code))
-      
-      (setf *github-ratelimit-remaining* (gethash "x-ratelimit-remaining" headers))
-      
-      (if *debug*
-          (log:info "GitHub's ratelimit remaining is ~A~%"
-                    *github-ratelimit-remaining*)
-          
-          (when (and *github-ratelimit-remaining*
-                     (< *github-ratelimit-remaining* 100))
-            (log:warn "GitHub's ratelimit remaining is ~A~%"
-                      *github-ratelimit-remaining*)))
+
+      (track-rate-limit headers)
       
       (jonathan:parse response))))
