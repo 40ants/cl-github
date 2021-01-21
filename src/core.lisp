@@ -14,7 +14,8 @@
            #:*token*
            #:*user-agent*
            #:*debug*
-           #:post))
+           #:post
+           #:*base-url*))
 (in-package github/core)
 
 
@@ -23,6 +24,7 @@
 (defvar *api-hits* 0)
 (defvar *token*)
 (defvar *user-agent* "cl-github (https://github.com/40ants/cl-github)")
+(defvar *base-url* "https://api.github.com")
 
 
 (defun sleep-and-retry-if-rate-limited (cond)
@@ -51,7 +53,7 @@
 
 ;; TODO: Support a read-timeout like described at
 ;;       https://github.com/fukamachi/dexador/issues/28
-(defun get (path &key params items verbose limit headers)
+(defun get (path &key params items verbose limit headers (timeout 10))
   (log:debug "Fetching data from ~A with params ~A" path params)
 
   (unless (boundp '*token*)
@@ -62,7 +64,7 @@
   (let* ((full-path (apply #'format (append (list nil path) params)))
          (url (if (starts-with-subseq "/" full-path)
                   ;; use either relative uri
-                  (concatenate 'string "https://api.github.com" full-path)
+                  (concatenate 'string *base-url* full-path)
                   ;; or full url with schema
                   full-path))
          (user-headers headers)
@@ -77,7 +79,7 @@
                 (handler-bind
                     ((dex:http-request-forbidden #'sleep-and-retry-if-rate-limited)
                      (dex:http-request-not-found #'dex:ignore-and-continue))
-                  (dex:get url :headers headers :verbose verbose))
+                  (dex:get url :headers headers :verbose verbose :connect-timeout timeout :read-timeout timeout))
                 
                 (setf *github-ratelimit-remaining* (gethash "x-ratelimit-remaining" headers))
                 
@@ -129,7 +131,7 @@
   
   (let* ((url (if (starts-with-subseq "/" path)
                   ;; use either relative uri
-                  (concatenate 'string "https://api.github.com" path)
+                  (concatenate 'string *base-url* path)
                   ;; or full url with schema
                   path))
          (user-headers headers)
