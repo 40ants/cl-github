@@ -27,6 +27,9 @@
 (defvar *base-url* "https://api.github.com")
 
 
+(defvar *warned-about-token* nil)
+
+
 (defun sleep-and-retry-if-rate-limited (cond)
   "Respect GitHub's rate limits and stop after we hit the limit.
   
@@ -51,13 +54,30 @@
         (dex:retry-request cond)))))
 
 
+(defun check-for-token ()
+  (unless (and *warned-about-token*
+               (boundp '*token*))
+    (setf *warned-about-token* t)
+    (log:warn "Please, set github:*token* variable to OAuth token. This way you'll have large rate limit.")))
+
+
+(defun make-headers (user-headers)
+  (append
+   (when (boundp '*token*)
+     (list (cons "Authorization"
+                 (concatenate 'string
+                              "token "
+                              *token*))))
+   (list (cons "User-Agent" *user-agent*))
+   user-headers))
+
+
 ;; TODO: Support a read-timeout like described at
 ;;       https://github.com/fukamachi/dexador/issues/28
 (defun get (path &key params items verbose limit headers (timeout 10))
   (log:debug "Fetching data from ~A with params ~A" path params)
 
-  (unless (boundp '*token*)
-    (error "Please, set github:*token* variable to OAuth token."))
+  (check-for-token)
 
   (setf *api-hits* (1+ *api-hits*))
   
@@ -68,12 +88,7 @@
                   ;; or full url with schema
                   full-path))
          (user-headers headers)
-         (headers (list* (cons "Authorization"
-                               (concatenate 'string
-                                            "token "
-                                            *token*))
-                         (cons "User-Agent" *user-agent*)
-                         user-headers)))
+         (headers (make-headers user-headers)))
     
     (with-links (response status-code headers next-link)
                 (handler-bind
@@ -81,7 +96,9 @@
                      (dex:http-request-not-found #'dex:ignore-and-continue))
                   (dex:get url :headers headers :verbose verbose :connect-timeout timeout :read-timeout timeout))
                 
-                (setf *github-ratelimit-remaining* (gethash "x-ratelimit-remaining" headers))
+                (setf *github-ratelimit-remaining*
+                      (parse-integer
+                       (gethash "x-ratelimit-remaining" headers)))
                 
                 (if *debug*
                     (log:info "GitHub's ratelimit remaining is ~A~%"
@@ -124,8 +141,7 @@
 (defun post (path data &key headers verbose)
   (log:debug "Posting data to" path)
 
-  (unless (boundp '*token*)
-    (error "Please, set github:*token* variable to OAuth token."))
+  (check-for-token)
 
   (setf *api-hits* (1+ *api-hits*))
   
@@ -134,15 +150,9 @@
                   (concatenate 'string *base-url* path)
                   ;; or full url with schema
                   path))
-         (user-headers headers)
          (content (jonathan:to-json data))
-         (headers (list* (cons "Authorization"
-                               (concatenate 'string
-                                            "token "
-                                            *token*))
-                         (cons "Content-Type" "application/json")
-                         (cons "User-Agent" *user-agent*)
-                         user-headers)))
+         (user-headers headers)
+         (headers (make-headers user-headers)))
     
     (multiple-value-bind (response status-code headers)
         (handler-bind
