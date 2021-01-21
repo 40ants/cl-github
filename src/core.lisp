@@ -15,7 +15,8 @@
            #:*user-agent*
            #:*debug*
            #:post
-           #:*base-url*))
+           #:*base-url*
+           #:*default-timeout*))
 (in-package github/core)
 
 
@@ -25,6 +26,7 @@
 (defvar *token*)
 (defvar *user-agent* "cl-github (https://github.com/40ants/cl-github)")
 (defvar *base-url* "https://api.github.com")
+(defvar *default-timeout* 10)
 
 
 (defvar *warned-about-token* nil)
@@ -72,9 +74,7 @@
    user-headers))
 
 
-;; TODO: Support a read-timeout like described at
-;;       https://github.com/fukamachi/dexador/issues/28
-(defun get (path &key params items verbose limit headers (timeout 10))
+(defun get (path &key params items verbose limit headers (timeout *default-timeout*))
   (log:debug "Fetching data from ~A with params ~A" path params)
 
   (check-for-token)
@@ -94,7 +94,10 @@
                 (handler-bind
                     ((dex:http-request-forbidden #'sleep-and-retry-if-rate-limited)
                      (dex:http-request-not-found #'dex:ignore-and-continue))
-                  (dex:get url :headers headers :verbose verbose :connect-timeout timeout :read-timeout timeout))
+                  (dex:get url :headers headers
+                               :verbose verbose
+                               :connect-timeout timeout
+                               :read-timeout timeout))
                 
                 (setf *github-ratelimit-remaining*
                       (parse-integer
@@ -138,7 +141,7 @@
                         result))))))
 
 
-(defun post (path data &key headers verbose)
+(defun post (path data &key headers verbose (timeout *default-timeout*))
   (log:debug "Posting data to" path)
 
   (check-for-token)
@@ -159,7 +162,9 @@
             ((dex:http-request-forbidden #'sleep-and-retry-if-rate-limited))
           (dex:post url :content content
                         :headers headers
-                        :verbose verbose))
+                        :verbose verbose
+                        :connect-timeout timeout
+                        :read-timeout timeout))
       (when (>= status-code 400)
         (log:error "Github reponded with" status-code))
       
