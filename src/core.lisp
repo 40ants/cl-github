@@ -23,7 +23,7 @@
 (defvar *debug* nil)
 (defvar *github-ratelimit-remaining*)
 (defvar *api-hits* 0)
-(defvar *token*)
+(defvar *token* nil)
 (defvar *user-agent* "cl-github (https://github.com/40ants/cl-github)")
 (defvar *base-url* "https://api.github.com")
 (defvar *default-timeout* 10)
@@ -64,14 +64,14 @@
 
 (defun check-for-token ()
   (when (and (not *warned-about-token*)
-             (not (boundp '*token*)))
+             (null *token*))
     (setf *warned-about-token* t)
     (log:warn "Please, set github:*token* variable to OAuth token. This way you'll have large rate limit.")))
 
 
 (defun make-headers (user-headers)
   (append
-   (when (boundp '*token*)
+   (when *token*
      (list (cons "Authorization"
                  (concatenate 'string
                               "token "

@@ -2,6 +2,11 @@
  ChangeLog
 ===========
 
+0.3.0 (2021-01-22)
+==================
+
+* Variable ``github:*token*`` now is bound to ``nil`` by default.
+
 0.2.1 (2021-01-21)
 ==================
 
