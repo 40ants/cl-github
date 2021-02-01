@@ -2,6 +2,18 @@
  ChangeLog
 ===========
 
+1.0.0 (2021-02-01)
+==================
+
+* Incompatible change! Now for URLs which returns lists of items, like ``{"items": [...], "total": 42}``
+  ``get`` function returns a plist in same format as original github handle.
+  Previously, a plain list of items was returned.
+
+  This way it is possible to use ``:limit`` option and still know how many items in the collection.
+
+  This change also fixes problems whith GitHub's URLs returned items in keys other than ``"items"``.
+  Now any key is supported.
+
 0.3.0 (2021-01-22)
 ==================
 

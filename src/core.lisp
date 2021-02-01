@@ -130,10 +130,31 @@
                                    ;; its results
                                    ((and (listp decoded)
                                          (keywordp (car decoded))
-                                         (member :|items| decoded)
                                          (member :|total_count| decoded))
-                                    (append (getf decoded :|items|)
-                                            items))
+                                    ;; Some urls return response with two keys:
+                                    ;; "total-count" and "items"
+                                    ;; or
+                                    ;; "total-count" and "workflow_runs"
+                                    ;; thus we need to figure out the key
+                                    ;; containing a list of items:
+                                    (let* ((items-keys
+                                             (loop for key in decoded by #'cddr
+                                                   unless (eql key :|total_count|)
+                                                     collect key))
+                                           (key (first items-keys)))
+                                      (unless (= (length items-keys)
+                                                 1)
+                                        (error "Number of keys in reponse should be 1. Found keys: ~A"
+                                               items-keys))
+
+                                      (setf
+                                       (getf items key)
+                                       (append (getf items key)
+                                               (getf decoded key))
+                                       ;; Also need to keep total count:
+                                       (getf items :|total_count|)
+                                       (getf decoded :|total_count|))
+                                      items))
                                    ;; Usual list of items or a single item
                                    ((listp decoded)
                                     (append decoded items))
