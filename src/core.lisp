@@ -8,6 +8,9 @@
                 #:starts-with-subseq)
   (:import-from #:link-header
                 #:with-links)
+  (:import-from #:rutils
+                #:plistp
+                #:alistp)
   
   (:shadow #:get)
   (:export #:get
@@ -94,10 +97,23 @@
                   *github-ratelimit-remaining*))))
 
 
-(defun get (path &key params items verbose limit headers (timeout *default-timeout*))
+(defun get (path &key params items verbose limit headers (timeout *default-timeout*) (dont-warn nil))
+  "Fetches data from the GitHub.
+
+   Params should be a list of argument which will be applied to the path like:
+
+   (format nil path param1 param2 ...)
+"
   (log:debug "Fetching data from ~A with params ~A" path params)
 
   (check-for-token)
+
+  (when (and params
+             (null dont-warn)) 
+    (when (alistp params)
+      (log:warn "You passed alist as PARAMS. Probably you misused github:get. To suppress this warning pass :dont-warn t."))
+    (when (plistp params)
+      (log:warn "You passed plist as PARAMS. Probably you misused github:get. To suppress this warning pass :dont-warn t.")))
 
   (setf *api-hits* (1+ *api-hits*))
   

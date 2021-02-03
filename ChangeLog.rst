@@ -2,6 +2,12 @@
  ChangeLog
 ===========
 
+1.0.1 (2021-02-03)
+==================
+
+* Now a warning logged when a you pass plist or alist ``:PARAMS`` into the ``GITHUB:GET`` function.
+  Because this is not how ``:PARAMS`` should be used.
+
 1.0.0 (2021-02-01)
 ==================
 
