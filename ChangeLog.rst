@@ -2,6 +2,12 @@
  ChangeLog
 ===========
 
+1.1.0 (2022-09-21)
+==================
+
+* Now it is possible to use ``secret-values`` library to set ``github:*token*`` and make application more secure.
+
+
 1.0.1 (2021-02-03)
 ==================
 

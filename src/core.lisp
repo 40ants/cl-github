@@ -2,6 +2,7 @@
   (:nicknames #:github)
   (:use #:cl)
   (:import-from #:log4cl)
+  (:import-from #:secret-values)
   (:import-from #:dexador)
   (:import-from #:jonathan)
   (:import-from #:alexandria
@@ -78,7 +79,7 @@
      (list (cons "Authorization"
                  (concatenate 'string
                               "token "
-                              *token*))))
+                              (secret-values:ensure-value-revealed *token*)))))
    (list (cons "User-Agent" *user-agent*))
    user-headers))
 
@@ -104,8 +105,6 @@
 
    (format nil path param1 param2 ...)
 "
-  (log:debug "Fetching data from ~A with params ~A" path params)
-
   (check-for-token)
 
   (when (and params
@@ -125,6 +124,8 @@
                   full-path))
          (user-headers headers)
          (headers (make-headers user-headers)))
+
+    (log:debug "Fetching data from ~A" url)
     
     (with-links (response status-code headers next-link)
                 (handler-bind
