@@ -2,6 +2,14 @@
  ChangeLog
 ===========
 
+1.1.1 (2022-09-22)
+==================
+
+* Function ``GITHUB:GET`` was fixed for case when given path does not exist and GitHub returns 404 error.
+  Previously, ``GITHUB:GET`` made infinite number HTTP requests with pauses to wait GitHub's rate limits reset.
+  Now it will return NIL by default and you can pass ``:IF-NOT-FOUND :IGNORE`` argument, to make it signal
+  ``DEX:HTTP-REQUEST-NOT-FOUND`` error.
+
 1.1.0 (2022-09-21)
 ==================
 

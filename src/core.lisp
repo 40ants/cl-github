@@ -87,7 +87,7 @@
 (defun track-rate-limit (headers)
   (setf *github-ratelimit-remaining*
         (int-header headers "x-ratelimit-remaining"))
-                
+  
   (if *debug*
       (log:info "GitHub's ratelimit remaining is ~A~%"
                 *github-ratelimit-remaining*)
@@ -98,15 +98,26 @@
                   *github-ratelimit-remaining*))))
 
 
-(defun get (path &key params items verbose limit headers (timeout *default-timeout*) (dont-warn nil))
+(defun get (path &key params
+                   items
+                   verbose
+                   limit
+                   headers
+                   (timeout *default-timeout*)
+                   (dont-warn nil)
+                   (if-not-found :ignore))
   "Fetches data from the GitHub.
 
    Params should be a list of argument which will be applied to the path like:
 
    (format nil path param1 param2 ...)
-"
-  (check-for-token)
 
+   When IF-NOT-FOUND is :IGNORE, then returns NIL. If :ERROR, then DEX:HTTP-REQUEST-NOT-FOUND
+   will be signalled.
+"
+  (check-type if-not-found (member :ignore :error))
+  (check-for-token)
+  
   (when (and params
              (null dont-warn)) 
     (when (alistp params)
@@ -114,7 +125,7 @@
     (when (plistp params)
       (log:warn "You passed plist as PARAMS. Probably you misused github:get. To suppress this warning pass :dont-warn t.")))
 
-  (setf *api-hits* (1+ *api-hits*))
+  (incf *api-hits*)
   
   (let* ((full-path (apply #'format (append (list nil path) params)))
          (url (if (starts-with-subseq "/" full-path)
@@ -125,12 +136,16 @@
          (user-headers headers)
          (headers (make-headers user-headers)))
 
-    (log:debug "Fetching data from ~A" url)
+    (log:warn "Fetching data from ~A" url)
     
     (with-links (response status-code headers next-link)
                 (handler-bind
                     ((dex:http-request-forbidden #'sleep-and-retry-if-rate-limited)
-                     (dex:http-request-not-found #'dex:ignore-and-continue))
+                     (dex:http-request-not-found (lambda (error)
+                                                   (declare (ignore error))
+                                                   ;; Return NIL on 404
+                                                   (when (eql if-not-found :ignore)
+                                                     (return-from get nil)))))
                   (dex:get url :headers headers
                                :verbose verbose
                                :connect-timeout timeout
@@ -192,7 +207,7 @@
 
   (check-for-token)
 
-  (setf *api-hits* (1+ *api-hits*))
+  (incf *api-hits*)
   
   (let* ((url (if (starts-with-subseq "/" path)
                   ;; use either relative uri
