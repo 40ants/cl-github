@@ -2,6 +2,11 @@
  ChangeLog
 ===========
 
+1.1.2 (2023-08-05)
+==================
+
+* Fixed error when accessing GitHub API without setting GITHUB:*TOKEN* first.
+
 1.1.1 (2022-09-22)
 ==================
 
