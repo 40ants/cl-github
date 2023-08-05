@@ -75,7 +75,7 @@
 
 (defun make-headers (user-headers)
   (append
-   (when *token*
+   (when (secret-values:ensure-value-revealed *token*)
      (list (cons "Authorization"
                  (concatenate 'string
                               "token "
